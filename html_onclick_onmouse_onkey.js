@@ -1,10 +1,10 @@
 /* 
  * html_onclick - JavaScript library for extend HTML and create widgets such as dropdown menu, counters, tabs, editable fields...
  * 
- * Version: 0.2
+ * Version: 1.0
  * License: MIT
  * 
- *  Copyright (c) 2013-2016 Saemon Zixel, http://saemonzixel.ru/
+ *  Copyright (c) 2013-2020 Saemon Zixel <saemonzixel@gmail.com>
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy of this software *  and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  *
@@ -14,15 +14,15 @@
  *
  */
 
-var outer_click_hooks = [];
+if("html_onclick" in window == false)
 function html_onclick(event) {
 	var ev = event || window.event;
 	var trg1 = ev.target || ev.srcElement || document.body.parentNode;
 	if (trg1.nodeType && trg1.nodeType == 9) trg1 = trg1.body.parentNode; // #document
-    if (trg1.nodeType && trg1.nodeType == 3) trg1 = trg1.parentNode; // #text
+	if (trg1.nodeType && trg1.nodeType == 3) trg1 = trg1.parentNode; // #text
 	var trg1p = (trg1.parentNode && trg1.parentNode.nodeType != 9) ? trg1.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
 	var trg1pp = (trg1p.parentNode && trg1p.parentNode.nodeType != 9) ? trg1p.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
-
+	
 	// удобная функция поиска близкого элемента по BEM
 	function find_near(class_name, if_not_found_return, start_node, prefix) {
 		// определим префикс блока
@@ -51,15 +51,21 @@ function html_onclick(event) {
 			
 		return if_not_found_return;
 	}
+
+	// для расширений
+	html_onclick.ev = ev;
+	html_onclick.ev_processed = true;
+	html_onclick.trg1 = trg1; html_onclick.trg1p = trg1p; html_onclick.trg1pp = trg1pp;
+	html_onclick.find_near = find_near;
 	
-	// [outerclick] event
-    if (outer_click_hooks.length && ev.type == 'click') {
-        var save_click_hooks = [];
-        for (var i = 0; i < outer_click_hooks.length; i++)
-            if (outer_click_hooks[i](event, trg1))
-                save_click_hooks.push(outer_click_hooks[i]);
-        outer_click_hooks = save_click_hooks;
-    }
+// [outerclick] event
+	if (html_onclick.outer_click_hooks.length && ev.type == 'click') {
+		var save_click_hooks = [];
+		for (var i = 0; i < html_onclick.outer_click_hooks.length; i++)
+			if (html_onclick.outer_click_hooks[i](event, trg1))
+				save_click_hooks.push(html_onclick.outer_click_hooks[i]);
+		html_onclick.outer_click_hooks = save_click_hooks;
+	}
 	
 	// g-show_hide-by_id-*
 	if(trg1.className.indexOf('g-show_hide-by_id') > -1) {
@@ -67,13 +73,13 @@ function html_onclick(event) {
 		var elem = document.getElementById(id[1]);
 		if(elem && elem.style.display == 'none') {
 			elem.style.display = 'block';
-			if(elem.getAttribute('onshow'))
-				(new Function('event', elem.getAttribute('onshow'))).call(trg1, ev);
+			if(elem.getAttribute('data-onshow'))
+				(new Function('event', elem.getAttribute('data-onshow'))).call(elem, ev);
 		} else
 		if(elem && elem.style.display != 'none') {
 			elem.style.display = 'none';
-			if(elem.getAttribute('onhide'))
-				(new Function('event', elem.getAttribute('onhide'))).call(trg1, ev);
+			if(elem.getAttribute('data-onhide'))
+				(new Function('event', elem.getAttribute('data-onhide'))).call(elem, ev);
 		}
 	}
 	
@@ -378,7 +384,7 @@ function html_onclick(event) {
 	}
 	
 	// b-photo_changer
-/*    if(trg1.className.indexOf('b-photo_changer') > -1
+    if(trg1.className.indexOf('b-photo_changer') > -1
 	  || ev.type == 'DOMContentLoaded') {
 
 		// после зогрузки дерева, найдём список фоток и если их много покажем btn-next
@@ -449,7 +455,7 @@ function html_onclick(event) {
 				// передвинем рамку, даже если её нет
 				var frame = find_near('b-photo_changer-frame', {style:{}});
 				frame.style.marginLeft = a.offsetLeft + 'px';
-*/
+
 				
 				/*// подкрутим активную в центр
 				var margin_left = parseInt(a.parentNode.children[0].style.marginLeft||'0');
@@ -470,11 +476,11 @@ function html_onclick(event) {
 					find_near('b-photo_changer-btn-next',{style:{}}).style.display = 'block';
 				} */
 				
-/*				if(ev.preventDefault) ev.preventDefault();
+				if(ev.preventDefault) ev.preventDefault();
 				else ev.returnValue = false;
 			}
 		}
-	}*/
+	}
     
 	// -------- g-editable-* -------------
 			
@@ -556,7 +562,7 @@ function html_onclick(event) {
 			menu.style.maxHeight = menu_parent_bbox.height + menu_parent_bbox.top - menu_parent_bbox.top - trg_offset.height + 'px';
 				
 		// скрытие меню
-		outer_click_hooks.push(function(event){ 
+		html_onclick.outer_click_hooks.push(function(event){ 
 		
 			// удалим либо скроем
 			if(menu.className.indexOf('remove_on_hide') > -1)
@@ -603,12 +609,22 @@ function html_onclick(event) {
 		inp.focus();
 		
 		var now = (new Date())*1 + 40;
-		outer_click_hooks.push(function(event, trg){ 
+		html_onclick.outer_click_hooks.push(function(event){ 
 			if(trg == inp || now > (new Date())*1) return true;
 			if(inp.value == '' && trg1.getAttribute('data-value-if-empty'))
 				trg1.innerHTML = trg1.getAttribute('data-value-if-empty');
-			else if(trg1.className.indexOf('type_float') > -1)
+			else if(trg1.className.indexOf('type_float') > -1) {
+				
+				// функция оформления цены
+				function stringToMoney(string) {
+					var price = (string+'').match(/([0-9]+)(\.([0-9]+))?/);
+					if(999 < price[1])
+						price[1] = price[1].toString().split('').reverse().join('').replace(/^(.)(.)(.)(.)(.)?(.)?(.)?(.)?(.)?$/, '$9$8$7&nbsp;$6$5$4&nbsp;$3$2$1&nbsp;').replace(/&nbsp;$/, '').replace(/^(&nbsp;)+/, '');
+					return price[1];
+				}
+				
 				trg1.innerHTML = stringToMoney(inp.value);
+			}
 			else
 				trg1.innerHTML = inp.value;
 			
@@ -672,7 +688,7 @@ function html_onclick(event) {
 		inp.focus();
 		
 		var now = (new Date())*1 + 40;
-		outer_click_hooks.push(function(event, trg){ 
+		html_onclick.outer_click_hooks.push(function(event, trg){ 
 			if(trg == inp || now > (new Date())*1) return true;
 			if(inp.value == '' && trg1.getAttribute('data-value-if-empty'))
 				trg1.innerHTML = trg1.getAttribute('data-value-if-empty');
@@ -751,7 +767,7 @@ function html_onclick(event) {
 		//menu.style.maxHeight = Math.max(60, Math.round((menu_parent.nodeName == 'BODY' ? window.innerHeight : (menu_parent.offsetHeight > menu_parent.parentNode.offsetHeight ? menu_parent.parentNode.offsetHeight : menu_parent.offsetHeight)) - trg_offset.top - trg.offsetHeight - 5)) + 'px';
 		menu.style.minWidth = trg1.offsetWidth + 'px';
 
-		outer_click_hooks.push(function(event, target){ 
+		html_onclick.outer_click_hooks.push(function(event, trg){ 
 			if(target.className.indexOf('c-dropdown-checklist_menu') > -1
 				&& target.className.indexOf('c-dropdown-checklist_menu-closer') < 0) 
 				return true; // пропустим клик
@@ -854,7 +870,7 @@ function html_onclick(event) {
 		div.style.cssText = 'left:'+left+'px;top:'+top+'px;';
 		document.body.appendChild(div);
 			
-		outer_click_hooks.push(function(ev1, trg){
+		html_onclick.outer_click_hooks.push(function(event, trg){ 
 			if(trg.className.indexOf('c-counter') > -1) return true;
 			div.parentNode.removeChild(div);
 		});
@@ -900,99 +916,36 @@ function html_onclick(event) {
 		}
 	}
 	
+	// расширения
+	for (var i in html_onclick.extensions)
+	if(html_onclick.extensions[i] instanceof Function)
+		html_onclick.extensions[i](ev, trg1, trg1p, trg1pp, find_near);
+	
+	// совместимость со старыми версиями
 	return window.html_onclick_custom ? html_onclick_custom(ev, trg1, trg1p, trg1pp, find_near) : undefined;
 }
 
-/* 
- * html_onkey - JavaScript library for extend HTML and create widgets such as dropdown menu, counters, tabs, editable fields...
- * 
- * Version: 0.2
- * License: MIT
- * 
- *  Copyright (c) 2013-2016 Saemon Zixel, http://saemonzixel.ru/
- *
- *  Permission is hereby granted, free of charge, to any person obtaining a copy of this software *  and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- */
-
-function html_onkey(event) {
-	var ev = event || window.event;
-	var trg1 = ev.target || ev.srcElement || document.body.parentNode;
-	if (trg1.nodeType && trg1.nodeType == 9) trg1 = trg1.body.parentNode; // #document
-    if (trg1.nodeType && trg1.nodeType == 3) trg1 = trg1.parentNode; // #text
-	var trg1p = (trg1.parentNode && trg1.parentNode.nodeType != 9) ? trg1.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
-	var trg1pp = (trg1p.parentNode && trg1p.parentNode.nodeType != 9) ? trg1p.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
-
-	// [keyup] [->], [SPACE] - next photo
-	if('keyup keydown'.indexOf(ev.type) > -1 && ((ev.keyCode||0) == 39 || (ev.keyCode||0) == 32)) {
-		var viewer = document.getElementById('c-image_viewer'); 
-		if(viewer) {
-			if(ev.type != 'keyup') { 
-// 				ev.preventDefault ? ev.preventDefault() : (ev.returnValue = false);
-// 				if(ev.stopPropagation) ev.stopPropagation();
-// 				else ev.cancelBubble = true;
-				return false;
-			}
-			html_onclick({type: 'click', target: viewer.childNodes[2]});
-			return false;
-		}
-	}
+/* install html_onclick events (if first load) */
+if(!html_onclick.extensions) {
+	html_onclick.extensions = [];
+	html_onclick.outer_click_hooks = [];
 	
-	// [keyup] [<-]  - previous photo
-	if('keyup keydown'.indexOf(ev.type) > -1 && (ev.keyCode||0) == 37) {
-		var viewer = document.getElementById('c-image_viewer'); 
-		if(viewer) {
-			if(ev.type != 'keyup') { 
-// 				ev.preventDefault ? ev.preventDefault() : (ev.returnValue = false);
-// 				if(ev.stopPropagation) ev.stopPropagation();
-// 				else ev.cancelBubble = true;
-				return false;
-			}
-			
-			html_onclick({type: 'click', target: viewer.childNodes[3]});
-			ev.preventDefault ? ev.preventDefault() : (ev.returnValue = false);
-			return false;
-		}
-	}
-	
-	// [keyup] [ESC] - close 
-	if('keyup keydown'.indexOf(ev.type) > -1 && (ev.keyCode||0) == 27) {
-		var close_btn = (document.getElementById('c-image_viewer')||{}).lastChild;
-		if(close_btn) {
-			if(ev.type != 'keyup') { 
-// 				ev.preventDefault ? ev.preventDefault() : (ev.returnValue = false);
-// 				if(ev.stopPropagation) ev.stopPropagation();
-// 				else ev.cancelBubble = true;
-				return false;
-			}
-			
-			html_onclick({type: 'click', target: close_btn});
-		}
-	}
+	document.documentElement.addEventListener("click", html_onclick);
+	document.documentElement.addEventListener("input", html_onclick);
 
-	// .g-show-length-in-...
-	if('keypress' == ev.type && trg1.className.indexOf('g-show-length-in-by_id') > -1 || trg1.className.indexOf('g-show-remains') > -1) {
-		var length_informer = document.getElementById(trg1.className.match(/by_id-([^ ]+)/)[1]);
-		if(length_informer)
-			length_informer.innerHTML = 
-				trg1.className.indexOf('g-show-remains') > -1 
-				? parseInt(trg1.getAttribute('maxlength')||'0') - trg1.value.length
-				: trg1.value.length;
-	}
-	
+	document.addEventListener("DOMContentLoaded", function(event) {
+		if(document.readyState != 'complete') return;
+		html_onclick({type: 'DOMContentLoaded', target: document});
+	});
 }
 
 /* 
  * html_onmouse - JavaScript library for extend HTML and create widgets such as trackbars, windows, draggable elements...
  * 
- * Version: 0.2
+ * Version: 1.0
  * License: MIT
  * 
- *  Copyright (c) 2013-2016 Saemon Zixel, http://saemonzixel.ru/
+ *  Copyright (c) 2013-2020 Saemon Zixel <saemonzixel@gmail.com>
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy of this software *  and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  *
@@ -1002,7 +955,7 @@ function html_onkey(event) {
  *
  */
 
-var html_onmouse_cursor = {};
+if("html_onmouse" in window == false)
 function html_onmouse(event) {
 	var ev = event || window.event || { type:'', target: document.body.parentNode };
     var trg1 = ev.target || ev.srcElement || document.body.parentNode;
@@ -1011,14 +964,14 @@ function html_onmouse(event) {
 	var trg1p = (trg1.parentNode && trg1.parentNode.nodeType != 9) ? trg1.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
 
 	// mouseout-window
-	if( ev.type=='mouseout') {
-		if(ev.type == 'mouseout') {
-			e = ev.originalEvent || ev; // if jQuery.Event
-			active_node = (e.relatedTarget) ? e.relatedTarget : e.toElement;
-			if(!active_node)
-				html_onmouse({type:'mouseout-window',target:(document.body||{}).parentNode||window});
+	if( ev.type == "mouseout" && ev instanceof Event) {
+		e = ev.originalEvent || ev; // if jQuery.Event
+		active_node = (e.relatedTarget) ? e.relatedTarget : e.toElement;
+		if(!active_node) {
+// 				html_onmouse({type:'mouseout-window',target:(document.body||{}).parentNode||window});
+			html_onmouse({type:"mouseout-window", target: trg1});
+			return;
 		}
-		return;
 	}
 	
 	function find_near(class_name, if_not_found_return, start_node, prefix) {
@@ -1041,6 +994,11 @@ function html_onmouse(event) {
 			
 		return if_not_found_return;
 	}
+	
+	// для расширений
+	html_onmouse.ev = ev;
+	html_onmouse.trg1 = trg1; html_onmouse.trg1p = trg1p;
+	html_onmouse.find_near = find_near;
 	
 	// .g-draggable [START...]
 	if(ev.type == 'mousedown' && trg1.className.indexOf('g-draggable') > -1) {
@@ -1076,13 +1034,14 @@ function html_onmouse(event) {
 		trg.setAttribute('data-start_params', start_params.join(' '));
 		trg.style.position = trg_style.position;
 		
-		html_onmouse_cursor.dragging_element = trg;
+		html_onmouse.cursor.dragging_element = trg;
+		ev.preventDefault();
 		return false; // подавим активацию выделения
 	}
 	
 	// .g-draggable [...MOVE...]
-	if(ev.type == 'mousemove' && html_onmouse_cursor['dragging_element']) {
-		var trg = html_onmouse_cursor.dragging_element;
+	if(ev.type == 'mousemove' && html_onmouse.cursor['dragging_element']) {
+		var trg = html_onmouse.cursor.dragging_element;
 		var base_point = trg.getAttribute('data-mousedown_point').split(' ');
 		var start_params = trg.getAttribute('data-start_params').split(' ');
 		switch(trg.style.position) {
@@ -1108,9 +1067,9 @@ function html_onmouse(event) {
 
 	// .g-draggable [...END]
 	if(ev.type == 'mouseup') {
-		for(var f in html_onmouse_cursor)
+		for(var f in html_onmouse.cursor)
 			if(f.indexOf('dragging_') === 0)
-				delete html_onmouse_cursor[f];
+				delete html_onmouse.cursor[f];
 			
 		document.ondragstart = null;
 		document.body.onselectstart = null; // IE8
@@ -1118,7 +1077,7 @@ function html_onmouse(event) {
 	
 	// .b-trackbar [START...]
 	if(ev.type == 'mousedown' && trg1.className.indexOf('b-trackbar-handle') > -1) {
-		html_onmouse_cursor.dragging_trackbar_handle = trg1;
+		html_onmouse.cursor.dragging_trackbar_handle = trg1;
 		
 		// отменим всплытие, и запретим выделение
 /*		if(ev.stopPropagation) ev.stopPropagation();
@@ -1129,9 +1088,9 @@ function html_onmouse(event) {
 	}
 	
 	// .b-trackbar [...MOVE...]
-	if(html_onmouse_cursor.dragging_trackbar_handle && ev.type == 'mousemove'
-		|| (ev.type == 'valuechanged' && !html_onmouse_cursor.dragging_trackbar_handle)) {
-		var trg = html_onmouse_cursor.dragging_trackbar_handle || trg1;
+	if(html_onmouse.cursor.dragging_trackbar_handle && ev.type == 'mousemove'
+		|| (ev.type == 'valuechanged' && !html_onmouse.cursor.dragging_trackbar_handle)) {
+		var trg = html_onmouse.cursor.dragging_trackbar_handle || trg1;
 //if(ev.type == 'valuechanged') console.log(ev);
 		// либо передвинули указатель, либо сменили занчение
 		if(ev.type == 'valuechanged') {
@@ -1205,7 +1164,7 @@ function html_onmouse(event) {
 		trg1.id = trg1.id || trg1.win.id+'_splitter'+(new Date())*1;
 			
 		// запомним, кого мы перетаскиваем
-		html_onmouse_cursor.dragging_splitter = trg1;
+		html_onmouse.cursor.dragging_splitter = trg1;
 			
 		// запретим выделение
 		document.body.onselectstart = function() { return false }
@@ -1217,8 +1176,8 @@ function html_onmouse(event) {
 	}
 
 	// .win-splitter [...DRAG]
-	if(ev.type == 'mousemove' && html_onmouse_cursor['dragging_splitter']) {
-		var trg = html_onmouse_cursor['dragging_splitter'];
+	if(ev.type == 'mousemove' && html_onmouse.cursor['dragging_splitter']) {
+		var trg = html_onmouse.cursor['dragging_splitter'];
 		var ev_pageX = ev.pageX || (ev.clientX+document.documentElement.scrollLeft);
 		var ev_pageY = ev.pageY || (ev.clientY+document.documentElement.scrollTop);
 
@@ -1236,7 +1195,7 @@ function html_onmouse(event) {
 			trg.force_delta_right = trg.force_delta_left = parseInt(start_left_top[0]) + delta_x - parseInt(trg.style.left||'0');
 // 			trg.style.left = parseInt(start_left_top[0]) + delta_x + 'px';
 		} else {
-			trg.force_delta_top = trg.force_delta_bottom = parseInt(start_left_top[1]) + delta_y - parseInt(trg.style.left||'0');
+			trg.force_delta_top = trg.force_delta_bottom = parseInt(start_left_top[1]) + delta_y - parseInt(trg.style.top||'0');
 // 			trg.style.top = parseInt(start_left_top[1]) + delta_y + 'px';
 		}
 		
@@ -1254,16 +1213,17 @@ function html_onmouse(event) {
 		trg1.setAttribute('data-mousedown_point', (ev.pageX || (ev.clientX+document.documentElement.scrollLeft))+' '+(ev.pageY || (ev.clientY+document.documentElement.scrollTop)));
 		trg1.removeAttribute('data-start_size');
 		
-		html_onmouse_cursor.dragging_window_resizer = trg1;
+		html_onmouse.cursor.dragging_window_resizer = trg1;
 		
 		// запретим выделение
-		document.body.onselectstart = function() { return false }
-		document.ondragstart = function(){ return false; }
+		document.body.onselectstart = function() { return false } // old IE
+		document.ondragstart = function(){ return false; } // old browsers
+		ev.preventDefault();
 	}
 
 	// .win-resizer [mousemove]
-	if(ev.type == 'mousemove' && html_onmouse_cursor['dragging_window_resizer']) {
-		var trg = html_onmouse_cursor.dragging_window_resizer || trg1;
+	if(ev.type == 'mousemove' && html_onmouse.cursor['dragging_window_resizer']) {
+		var trg = html_onmouse.cursor.dragging_window_resizer || trg1;
 		var parent_div = trg.parentNode;
 		var ev_pageX = ev.pageX || (ev.clientX+document.documentElement.scrollLeft);
 		var ev_pageY = ev.pageY || (ev.clientY+document.documentElement.scrollTop);
@@ -1398,8 +1358,7 @@ function html_onmouse(event) {
 					func_src.push('var '+fieldset.id+'_delta_top = '+fieldset.id+'.force_delta_top || 0;');
 					checklist[fieldset.id+'_delta_top'] = true;
 				} else {
-					reloc[0] = fieldset.id;
-					checklist[fieldset.id+'_delta_top'] = reloc;
+					checklist[fieldset.id+'_delta_top'] = [fieldset.id, reloc[1], reloc[2], reloc[3], reloc[4], reloc[5]];
 				}
 				
 				// BOTTOM
@@ -1409,7 +1368,7 @@ function html_onmouse(event) {
 					checklist[fieldset.id+'_delta_bottom'] = true;
 				} else {
 					reloc[0] = fieldset.id;
-					checklist[fieldset.id+'_delta_bottom'] = reloc;
+					checklist[fieldset.id+'_delta_bottom'] = [fieldset.id, reloc[1], reloc[2], reloc[3], reloc[4], reloc[5]];
 				}
 				
 				// LEFT
@@ -1419,7 +1378,7 @@ function html_onmouse(event) {
 					checklist[fieldset.id+'_delta_left'] = true;
 				} else {
 					reloc[0] = fieldset.id;
-					checklist[fieldset.id+'_delta_left'] = reloc;
+					checklist[fieldset.id+'_delta_left'] = [fieldset.id, reloc[1], reloc[2], reloc[3], reloc[4], reloc[5]];
 				}
 				
 				// RIGHT
@@ -1429,7 +1388,7 @@ function html_onmouse(event) {
 					checklist[fieldset.id+'_delta_right'] = true;
 				} else {
 					reloc[0] = fieldset.id;
-					checklist[fieldset.id+'_delta_right'] = reloc;
+					checklist[fieldset.id+'_delta_right'] = [fieldset.id, reloc[1], reloc[2], reloc[3], reloc[4], reloc[5]];
 				}
 			}
 			
@@ -1531,19 +1490,9 @@ function html_onmouse(event) {
 				if(been_processed == 0) break;
 			}
 			
-/*			jQuery.ajaxSetup({async: false});
-			jQuery.post('/cache/filecache/cache.php', {js_content: 'document.getElementById("'+win.id+'").onresize_func = function(win, new_width, new_height, fieldsets) { '+func_src.join('\n')+' };'}, function(resp){
-				var node = document.createElement('SCRIPT');
-				node.src="/cache/filecache/"+resp;
-				document.documentElement.firstChild.appendChild(node);
-			}); */
-// 			return;
-			
 			win.onresize_func = new Function('win, new_width, new_height, fieldsets', func_src.join('\n'));
 			win.onresize_hash = current_hash;
-			
-console.log(win.onresize_hash);
-console.log(func_src.join('\n'));
+// console.log(win.onresize_hash, func_src.join('\n'));
 
 		}
 		
@@ -1569,6 +1518,13 @@ console.log(func_src.join('\n'));
 		while(trg.parentNode.className.indexOf('win') > -1) trg = trg.parentNode;
 		
 		return html_onmouse({type:'winclose', target: trg});
+	}
+	
+	// .win-minimize-btn, .win-minimize-button
+	if(ev.type == 'mouseup' && (trg1.className.indexOf('win-minimize-btn') > -1 || trg1.className.indexOf('win-minimize-button') > -1)) {
+		var trg = trg1.parentNode;
+		while(trg.parentNode.className.indexOf('win') > -1) trg = trg.parentNode;
+		trg.style.display = "none";
 	}
 
 	// [wincreate]
@@ -1655,72 +1611,140 @@ console.log(func_src.join('\n'));
 	
 	// отклуючаем любые перетаскивания и включаем обратно выделения
 	if(ev.type == 'mouseup' || ev.type == 'mouseout-window') {
-		for(var f in html_onmouse_cursor)
+		for(var f in html_onmouse.cursor)
 			if(f.indexOf('dragging_') === 0)
-				delete html_onmouse_cursor[f];
+				delete html_onmouse.cursor[f];
 			
 //		document.ondragstart = null;
 		document.body.onselectstart = null; // IE8
 	}
+	// расширения
+	for (var i in html_onmouse.extensions)
+	if(html_onmouse.extensions[i] instanceof Function)
+		html_onmouse.extensions[i](ev, trg1, trg1p, trg1p.parentNode, find_near);
+	
+	// для совместимости со старым кодом
+// 	return window.html_onmouse_custom ? html_onmouse_custom(ev, trg1, trg1p, trg1p.parentNode, find_near) : undefined;
 }
 
-document.documentElement.onclick = html_onclick;
-document.documentElement.oninput = html_onclick;
-document.documentElement.onkeyup = html_onkey;
-document.documentElement.onkeypress = html_onkey;
-document.documentElement.onkeydown = html_onkey;
-document.documentElement.onchange = html_onkey;
-document.documentElement.onmousedown = html_onmouse;
-document.documentElement.onmousemove = html_onmouse;
-document.documentElement.onmouseup = html_onmouse;
-document.documentElement.onmouseout = html_onmouse;
-
-// old IE
-document.onreadystatechange = function(event) {
-	if(document.readyState != 'complete') return;
-	html_onclick({type: 'DOMContentLoaded', target: document});
+/* install html_onmouse events (if first load) */
+if(!html_onmouse.extensions) {
+	html_onmouse.extensions = [];
+	html_onmouse.cursor = {};
+	
+	document.documentElement.addEventListener("mousedown", html_onmouse);
+	document.documentElement.addEventListener("mousemove", html_onmouse);
+	document.documentElement.addEventListener("mouseup", html_onmouse);
+	document.documentElement.addEventListener("mouseout", html_onmouse);
+	document.documentElement.addEventListener("mouseover", html_onmouse);
 }
 
-// all other
-if(document.addEventListener)
-	document.addEventListener("DOMContentLoaded", document.onreadystatechange);
+/* 
+ * html_onkey - JavaScript library for extend HTML and create widgets such as dropdown menu, counters, tabs, editable fields...
+ * 
+ * Version: 1.0
+ * License: MIT
+ * 
+ *  Copyright (c) 2013-2020 Saemon Zixel <saemonzixel@gmail.com>
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy of this software *  and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
 
-// Спецефичные для сайта обработки
-// function html_onclick_custom(ev, trg1, trg1p, trg1pp) {
-// }
+if("html_onkey" in window == false)
+function html_onkey(event) {
+	var ev = event || window.event;
+	var trg1 = ev.target || ev.srcElement || document.body.parentNode;
+	if (trg1.nodeType && trg1.nodeType == 9) trg1 = trg1.body.parentNode; // #document
+    if (trg1.nodeType && trg1.nodeType == 3) trg1 = trg1.parentNode; // #text
+	var trg1p = (trg1.parentNode && trg1.parentNode.nodeType != 9) ? trg1.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
+	var trg1pp = (trg1p.parentNode && trg1p.parentNode.nodeType != 9) ? trg1p.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
+	
+	// для расширений
+	html_onkey.ev = ev;
+	html_onkey.trg1 = trg1; html_onkey.trg1p = trg1p; html_onkey.trg1pp = trg1pp;
+	
+	// расширения
+	for (var i in html_onkey.extensions) 
+	if(html_onkey.extensions[i] instanceof Function)
+		html_onkey.extensions[i](ev, trg1, trg1p, trg1pp);
 
-// функция оформления цены
-function stringToMoney(string) {
-	var price = (string+'').match(/([0-9]+)(\.([0-9]+))?/);
-	if(999 < price[1])
-		price[1] = price[1].toString().split('').reverse().join('').replace(/^(.)(.)(.)(.)(.)?(.)?(.)?(.)?(.)?$/, '$9$8$7&nbsp;$6$5$4&nbsp;$3$2$1&nbsp;').replace(/&nbsp;$/, '').replace(/^(&nbsp;)+/, '');
-	return price[1];
-}
-
-// analog JSON.stringify
-function json_enc(obj) {
-	switch(typeof obj) {
-		case 'object':
-			if(obj == null)
-				return 'null';
-			
-			var json = [];
-			if('length' in obj == true) {
-				for(var i = 0; i < obj.length; i++)
-					json.push(json_enc(obj[i]));
-				return '['+json.join(',')+']';
+	// [keyup] [->], [SPACE] - next photo
+	if('keyup keydown'.indexOf(ev.type) > -1 && ((ev.keyCode||0) == 39 || (ev.keyCode||0) == 32)) {
+		var viewer = document.getElementById('c-image_viewer'); 
+		if(viewer) {
+			if(ev.type != 'keyup') { 
+// 				ev.preventDefault ? ev.preventDefault() : (ev.returnValue = false);
+// 				if(ev.stopPropagation) ev.stopPropagation();
+// 				else ev.cancelBubble = true;
+				return false;
+			}
+			html_onclick({type: 'click', target: viewer.childNodes[2]});
+			return false;
+		}
+	}
+	
+	// [keyup] [<-]  - previous photo
+	if('keyup keydown'.indexOf(ev.type) > -1 && (ev.keyCode||0) == 37) {
+		var viewer = document.getElementById('c-image_viewer'); 
+		if(viewer) {
+			if(ev.type != 'keyup') { 
+// 				ev.preventDefault ? ev.preventDefault() : (ev.returnValue = false);
+// 				if(ev.stopPropagation) ev.stopPropagation();
+// 				else ev.cancelBubble = true;
+				return false;
 			}
 			
-			for(var f in obj)
-				json.push('"'+f+'":'+json_enc(obj[f]));
-			return '{'+json.join(',')+'}';
-		case 'number':
-			return obj;
-		case 'boolean':
-			return obj ? 'true' : 'false';
-		case 'undefined':
-			return 'undefined';
-		default:
-			return '"'+String(obj)+'"';
+			html_onclick({type: 'click', target: viewer.childNodes[3]});
+			ev.preventDefault ? ev.preventDefault() : (ev.returnValue = false);
+			return false;
+		}
 	}
+	
+	// [keyup] [ESC] - close 
+	if('keyup keydown'.indexOf(ev.type) > -1 && (ev.keyCode||0) == 27) {
+		var close_btn = (document.getElementById('c-image_viewer')||{}).lastChild;
+		if(close_btn) {
+			if(ev.type != 'keyup') { 
+// 				ev.preventDefault ? ev.preventDefault() : (ev.returnValue = false);
+// 				if(ev.stopPropagation) ev.stopPropagation();
+// 				else ev.cancelBubble = true;
+				return false;
+			}
+			
+			html_onclick({type: 'click', target: close_btn});
+		}
+	}
+
+	// .g-show-length-in-...
+	if('keypress' == ev.type && trg1.className.indexOf('g-show-length-in-by_id') > -1 || trg1.className.indexOf('g-show-remains') > -1) {
+		var length_informer = document.getElementById(trg1.className.match(/by_id-([^ ]+)/)[1]);
+		if(length_informer)
+			length_informer.innerHTML = 
+				trg1.className.indexOf('g-show-remains') > -1 
+				? parseInt(trg1.getAttribute('maxlength')||'0') - trg1.value.length
+				: trg1.value.length;
+	}
+	
+	// расширения
+	for (var i in html_onkey.extensions) 
+	if(html_onkey.extensions[i] instanceof Function)
+		html_onkey.extensions[i](ev, trg1, trg1p, trg1pp);
+	
+	// для совместимости со старым кодом
+	return window.html_onkey_custom ? html_onkey_custom(ev, trg1, trg1p, trg1pp) : undefined;
+}
+
+/* install html_onkey events (if first load) */
+if(!html_onkey.extensions) {
+	html_onkey.extensions = [];
+	
+	document.documentElement.addEventListener("keyup", html_onkey);
+	document.documentElement.addEventListener("keypress", html_onkey);
+	document.documentElement.addEventListener("keydown", html_onkey);
+	document.documentElement.addEventListener("change", html_onkey);
 }

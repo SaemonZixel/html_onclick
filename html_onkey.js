@@ -1,10 +1,10 @@
 /* 
  * html_onkey - JavaScript library for extend HTML and create widgets such as dropdown menu, counters, tabs, editable fields...
  * 
- * Version: 0.2
+ * Version: 1.0
  * License: MIT
  * 
- *  Copyright (c) 2013-2016 Saemon Zixel, http://saemonzixel.ru/
+ *  Copyright (c) 2013-2020 Saemon Zixel <saemonzixel@gmail.com>
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy of this software *  and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  *
@@ -14,6 +14,7 @@
  *
  */
 
+if("html_onkey" in window == false)
 function html_onkey(event) {
 	var ev = event || window.event;
 	var trg1 = ev.target || ev.srcElement || document.body.parentNode;
@@ -21,6 +22,15 @@ function html_onkey(event) {
     if (trg1.nodeType && trg1.nodeType == 3) trg1 = trg1.parentNode; // #text
 	var trg1p = (trg1.parentNode && trg1.parentNode.nodeType != 9) ? trg1.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
 	var trg1pp = (trg1p.parentNode && trg1p.parentNode.nodeType != 9) ? trg1p.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
+	
+	// для расширений
+	html_onkey.ev = ev;
+	html_onkey.trg1 = trg1; html_onkey.trg1p = trg1p; html_onkey.trg1pp = trg1pp;
+	
+	// расширения
+	for (var i in html_onkey.extensions) 
+	if(html_onkey.extensions[i] instanceof Function)
+		html_onkey.extensions[i](ev, trg1, trg1p, trg1pp);
 
 	// [keyup] [->], [SPACE] - next photo
 	if('keyup keydown'.indexOf(ev.type) > -1 && ((ev.keyCode||0) == 39 || (ev.keyCode||0) == 32)) {
@@ -79,9 +89,21 @@ function html_onkey(event) {
 				: trg1.value.length;
 	}
 	
+	// расширения
+	for (var i in html_onkey.extensions) 
+	if(html_onkey.extensions[i] instanceof Function)
+		html_onkey.extensions[i](ev, trg1, trg1p, trg1pp);
+	
+	// для совместимости со старым кодом
+	return window.html_onkey_custom ? html_onkey_custom(ev, trg1, trg1p, trg1pp) : undefined;
 }
 
-document.documentElement.onkeyup = html_onkey;
-document.documentElement.onkeypress = html_onkey;
-document.documentElement.onkeydown = html_onkey;
-document.documentElement.onchange = html_onkey;
+/* install html_onkey events (if first load) */
+if(!html_onkey.extensions) {
+	html_onkey.extensions = [];
+	
+	document.documentElement.addEventListener("keyup", html_onkey);
+	document.documentElement.addEventListener("keypress", html_onkey);
+	document.documentElement.addEventListener("keydown", html_onkey);
+	document.documentElement.addEventListener("change", html_onkey);
+}

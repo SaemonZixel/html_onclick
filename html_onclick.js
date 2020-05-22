@@ -1,10 +1,10 @@
 /* 
  * html_onclick - JavaScript library for extend HTML and create widgets such as dropdown menu, counters, tabs, editable fields...
  * 
- * Version: 0.2
+ * Version: 1.0
  * License: MIT
  * 
- *  Copyright (c) 2013-2016 Saemon Zixel, http://saemonzixel.ru/
+ *  Copyright (c) 2013-2020 Saemon Zixel <saemonzixel@gmail.com>
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy of this software *  and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  *
@@ -14,15 +14,15 @@
  *
  */
 
-var outer_click_hooks = [];
+if("html_onclick" in window == false)
 function html_onclick(event) {
 	var ev = event || window.event;
 	var trg1 = ev.target || ev.srcElement || document.body.parentNode;
 	if (trg1.nodeType && trg1.nodeType == 9) trg1 = trg1.body.parentNode; // #document
-    if (trg1.nodeType && trg1.nodeType == 3) trg1 = trg1.parentNode; // #text
+	if (trg1.nodeType && trg1.nodeType == 3) trg1 = trg1.parentNode; // #text
 	var trg1p = (trg1.parentNode && trg1.parentNode.nodeType != 9) ? trg1.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
 	var trg1pp = (trg1p.parentNode && trg1p.parentNode.nodeType != 9) ? trg1p.parentNode : {className:'', nodeName:'', getAttribute:function(){return ''}};
-
+	
 	// удобная функция поиска близкого элемента по BEM
 	function find_near(class_name, if_not_found_return, start_node, prefix) {
 		// определим префикс блока
@@ -51,15 +51,21 @@ function html_onclick(event) {
 			
 		return if_not_found_return;
 	}
+
+	// для расширений
+	html_onclick.ev = ev;
+	html_onclick.ev_processed = true;
+	html_onclick.trg1 = trg1; html_onclick.trg1p = trg1p; html_onclick.trg1pp = trg1pp;
+	html_onclick.find_near = find_near;
 	
-	// [outerclick] event
-    if (outer_click_hooks.length && ev.type == 'click') {
-        var save_click_hooks = [];
-        for (var i = 0; i < outer_click_hooks.length; i++)
-            if (outer_click_hooks[i](event, trg1))
-                save_click_hooks.push(outer_click_hooks[i]);
-        outer_click_hooks = save_click_hooks;
-    }
+// [outerclick] event
+	if (html_onclick.outer_click_hooks.length && ev.type == 'click') {
+		var save_click_hooks = [];
+		for (var i = 0; i < html_onclick.outer_click_hooks.length; i++)
+			if (html_onclick.outer_click_hooks[i](event, trg1))
+				save_click_hooks.push(html_onclick.outer_click_hooks[i]);
+		html_onclick.outer_click_hooks = save_click_hooks;
+	}
 	
 	// g-show_hide-by_id-*
 	if(trg1.className.indexOf('g-show_hide-by_id') > -1) {
@@ -67,13 +73,13 @@ function html_onclick(event) {
 		var elem = document.getElementById(id[1]);
 		if(elem && elem.style.display == 'none') {
 			elem.style.display = 'block';
-			if(elem.getAttribute('onshow'))
-				(new Function('event', elem.getAttribute('onshow'))).call(trg1, ev);
+			if(elem.getAttribute('data-onshow'))
+				(new Function('event', elem.getAttribute('data-onshow'))).call(elem, ev);
 		} else
 		if(elem && elem.style.display != 'none') {
 			elem.style.display = 'none';
-			if(elem.getAttribute('onhide'))
-				(new Function('event', elem.getAttribute('onhide'))).call(trg1, ev);
+			if(elem.getAttribute('data-onhide'))
+				(new Function('event', elem.getAttribute('data-onhide'))).call(elem, ev);
 		}
 	}
 	
@@ -378,7 +384,7 @@ function html_onclick(event) {
 	}
 	
 	// b-photo_changer
-/*    if(trg1.className.indexOf('b-photo_changer') > -1
+    if(trg1.className.indexOf('b-photo_changer') > -1
 	  || ev.type == 'DOMContentLoaded') {
 
 		// после зогрузки дерева, найдём список фоток и если их много покажем btn-next
@@ -449,7 +455,7 @@ function html_onclick(event) {
 				// передвинем рамку, даже если её нет
 				var frame = find_near('b-photo_changer-frame', {style:{}});
 				frame.style.marginLeft = a.offsetLeft + 'px';
-*/
+
 				
 				/*// подкрутим активную в центр
 				var margin_left = parseInt(a.parentNode.children[0].style.marginLeft||'0');
@@ -470,11 +476,11 @@ function html_onclick(event) {
 					find_near('b-photo_changer-btn-next',{style:{}}).style.display = 'block';
 				} */
 				
-/*				if(ev.preventDefault) ev.preventDefault();
+				if(ev.preventDefault) ev.preventDefault();
 				else ev.returnValue = false;
 			}
 		}
-	}*/
+	}
     
 	// -------- g-editable-* -------------
 			
@@ -556,7 +562,7 @@ function html_onclick(event) {
 			menu.style.maxHeight = menu_parent_bbox.height + menu_parent_bbox.top - menu_parent_bbox.top - trg_offset.height + 'px';
 				
 		// скрытие меню
-		outer_click_hooks.push(function(event){ 
+		html_onclick.outer_click_hooks.push(function(event){ 
 		
 			// удалим либо скроем
 			if(menu.className.indexOf('remove_on_hide') > -1)
@@ -603,12 +609,22 @@ function html_onclick(event) {
 		inp.focus();
 		
 		var now = (new Date())*1 + 40;
-		outer_click_hooks.push(function(event, trg){ 
+		html_onclick.outer_click_hooks.push(function(event){ 
 			if(trg == inp || now > (new Date())*1) return true;
 			if(inp.value == '' && trg1.getAttribute('data-value-if-empty'))
 				trg1.innerHTML = trg1.getAttribute('data-value-if-empty');
-			else if(trg1.className.indexOf('type_float') > -1)
+			else if(trg1.className.indexOf('type_float') > -1) {
+				
+				// функция оформления цены
+				function stringToMoney(string) {
+					var price = (string+'').match(/([0-9]+)(\.([0-9]+))?/);
+					if(999 < price[1])
+						price[1] = price[1].toString().split('').reverse().join('').replace(/^(.)(.)(.)(.)(.)?(.)?(.)?(.)?(.)?$/, '$9$8$7&nbsp;$6$5$4&nbsp;$3$2$1&nbsp;').replace(/&nbsp;$/, '').replace(/^(&nbsp;)+/, '');
+					return price[1];
+				}
+				
 				trg1.innerHTML = stringToMoney(inp.value);
+			}
 			else
 				trg1.innerHTML = inp.value;
 			
@@ -672,7 +688,7 @@ function html_onclick(event) {
 		inp.focus();
 		
 		var now = (new Date())*1 + 40;
-		outer_click_hooks.push(function(event, trg){ 
+		html_onclick.outer_click_hooks.push(function(event, trg){ 
 			if(trg == inp || now > (new Date())*1) return true;
 			if(inp.value == '' && trg1.getAttribute('data-value-if-empty'))
 				trg1.innerHTML = trg1.getAttribute('data-value-if-empty');
@@ -751,7 +767,7 @@ function html_onclick(event) {
 		//menu.style.maxHeight = Math.max(60, Math.round((menu_parent.nodeName == 'BODY' ? window.innerHeight : (menu_parent.offsetHeight > menu_parent.parentNode.offsetHeight ? menu_parent.parentNode.offsetHeight : menu_parent.offsetHeight)) - trg_offset.top - trg.offsetHeight - 5)) + 'px';
 		menu.style.minWidth = trg1.offsetWidth + 'px';
 
-		outer_click_hooks.push(function(event, target){ 
+		html_onclick.outer_click_hooks.push(function(event, trg){ 
 			if(target.className.indexOf('c-dropdown-checklist_menu') > -1
 				&& target.className.indexOf('c-dropdown-checklist_menu-closer') < 0) 
 				return true; // пропустим клик
@@ -854,7 +870,7 @@ function html_onclick(event) {
 		div.style.cssText = 'left:'+left+'px;top:'+top+'px;';
 		document.body.appendChild(div);
 			
-		outer_click_hooks.push(function(ev1, trg){
+		html_onclick.outer_click_hooks.push(function(event, trg){ 
 			if(trg.className.indexOf('c-counter') > -1) return true;
 			div.parentNode.removeChild(div);
 		});
@@ -900,30 +916,25 @@ function html_onclick(event) {
 		}
 	}
 	
+	// расширения
+	for (var i in html_onclick.extensions)
+	if(html_onclick.extensions[i] instanceof Function)
+		html_onclick.extensions[i](ev, trg1, trg1p, trg1pp, find_near);
+	
+	// совместимость со старыми версиями
 	return window.html_onclick_custom ? html_onclick_custom(ev, trg1, trg1p, trg1pp, find_near) : undefined;
 }
 
-document.documentElement.onclick = html_onclick;
-document.documentElement.oninput = html_onclick;
+/* install html_onclick events (if first load) */
+if(!html_onclick.extensions) {
+	html_onclick.extensions = [];
+	html_onclick.outer_click_hooks = [];
+	
+	document.documentElement.addEventListener("click", html_onclick);
+	document.documentElement.addEventListener("input", html_onclick);
 
-// old IE
-document.onreadystatechange = function(event) {
-	if(document.readyState != 'complete') return;
-	html_onclick({type: 'DOMContentLoaded', target: document});
-}
-
-// all other
-if(document.addEventListener)
-	document.addEventListener("DOMContentLoaded", document.onreadystatechange);
-
-// Спецефичные для сайта обработки
-// function html_onclick_custom(ev, trg1, trg1p, trg1pp) {
-// }
-
-// функция оформления цены
-function stringToMoney(string) {
-	var price = (string+'').match(/([0-9]+)(\.([0-9]+))?/);
-	if(999 < price[1])
-		price[1] = price[1].toString().split('').reverse().join('').replace(/^(.)(.)(.)(.)(.)?(.)?(.)?(.)?(.)?$/, '$9$8$7&nbsp;$6$5$4&nbsp;$3$2$1&nbsp;').replace(/&nbsp;$/, '').replace(/^(&nbsp;)+/, '');
-	return price[1];
+	document.addEventListener("DOMContentLoaded", function(event) {
+		if(document.readyState != 'complete') return;
+		html_onclick({type: 'DOMContentLoaded', target: document});
+	});
 }
